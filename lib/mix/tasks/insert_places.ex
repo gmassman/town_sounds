@@ -30,11 +30,9 @@ defmodule Mix.Tasks.InsertPlaces do
   end
 
   def insert_places(places) do
-    IO.inspect places
-
     Enum.each(places, fn place ->
       case Repo.insert(place) do
-        {:ok, p} -> IO.inspect(p)
+        {:ok, p} -> p
         {:error, not_place} -> IO.inspect(not_place)
       end
     end)
@@ -42,8 +40,8 @@ defmodule Mix.Tasks.InsertPlaces do
 
   def parse_body(response) do
     Poison.decode!(response.body)
-    |> Enum.map(fn place_atts ->
-      AutocompletePlace.changeset(%AutocompletePlace{}, place_atts)
+    |> Enum.map(fn place_attrs ->
+      AutocompletePlace.changeset(%AutocompletePlace{}, place_attrs)
     end)
   end
 
