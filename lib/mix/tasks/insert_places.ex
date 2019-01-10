@@ -9,24 +9,14 @@ defmodule Mix.Tasks.InsertPlaces do
     HTTPoison.start
     start_ecto()
 
-    File.stream!("priv/cities-usa.csv")
-    |> CSV.decode(headers: true)
-    |> Enum.each(fn {:ok, data} ->
-      base_url <> clean_city(data["City"])
+    lines = File.stream!("priv/cities-usa.csv") |> CSV.decode(headers: true)
+    for {:ok, data} <- lines do
+      base_url <> String.replace(data["City"], ~r/\[\d+\]/, "")
       |> URI.encode
       |> HTTPoison.get!
       |> parse_body()
       |> insert_places()
-    end)
-  end
-
-  def start_ecto do
-    repos = parse_repo([])
-
-    Enum.each(repos, fn repo ->
-      ensure_repo(repo, [])
-      {:ok, _pid, _apps} = ensure_started(repo, [])
-    end)
+    end
   end
 
   def insert_places(places) do
@@ -39,13 +29,15 @@ defmodule Mix.Tasks.InsertPlaces do
   end
 
   def parse_body(response) do
-    Poison.decode!(response.body)
-    |> Enum.map(fn place_attrs ->
-      AutocompletePlace.changeset(%AutocompletePlace{}, place_attrs)
-    end)
+    Poison.decode!(response.body) |> Enum.map(&(AutocompletePlace.changeset(%AutocompletePlace{}, &1)))
   end
 
-  def clean_city(city) do
-    String.replace(city, ~r/\[\d+\]/, "")
+  def start_ecto do
+    repos = parse_repo([])
+
+    Enum.each(repos, fn repo ->
+      ensure_repo(repo, [])
+      {:ok, _pid, _apps} = ensure_started(repo, [])
+    end)
   end
 end
