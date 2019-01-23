@@ -45,7 +45,10 @@ defmodule TownSounds.MixProject do
       {:plug_cowboy, "~> 2.0"},
       {:httpoison, "~> 1.5.0"},
       {:csv, "~> 2.1.1"},
-      {:poison, "~> 3.1.0"}
+      {:poison, "~> 3.1.0"},
+      {:apex, "~> 1.2.1"},
+      {:gproc, "~> 0.8.0"},
+      {:redix, "~> 0.9.1"}
     ]
   end
 

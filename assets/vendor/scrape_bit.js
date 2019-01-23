@@ -1,6 +1,6 @@
 const puppeteer = require('puppeteer')
-const fs = require('fs')
-// const { Readable } = require('stream')
+const redis = require("redis")
+
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
@@ -12,7 +12,8 @@ process.on('unhandledRejection', error => {
 (async () => {
     const SCROLL_DOWN_EVENTS = process.env.SCROLL_DOWN_EVENTS || 1000
     const PLACE_ID = process.env.PLACE_ID || 'ChIJOwg_06VPwokRYv534QaPC8g' // NYC
-    const FIFO_PATH = process.env.FIFO_PATH || '/tmp/test_pipe'
+    const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379'
+    const FIFO_CHANNEL = process.env.FIFO_CHANNEL || `BIT_CHANNEL:${PLACE_ID}`
 
     // const config = { headless: false, devtools: true } // use for testing
     const config = { headless: true }
@@ -42,9 +43,11 @@ process.on('unhandledRejection', error => {
 
     const eventNode = 'event-0fe45b3b'
     const allHtml = new Set()
-    const wstream = fs.createWriteStream(FIFO_PATH)
+    const redisClient = redis.createClient(REDIS_URL);
 
-    let ok = true
+    redisClient.on("error", function (err) {
+        console.log("[Redis Error]", err);
+    })
 
     const htmlFromMatchNodes = (nodes) => {
         html = []
@@ -63,20 +66,14 @@ process.on('unhandledRejection', error => {
             if (allHtml.has(html)) {
                 continue
             }
-            console.log(html)
+
             allHtml.add(html)
-            ok = wstream.write('\n' + html)
+            redisClient.publish(FIFO_CHANNEL, html)
         }
     }
 
-    if (!ok) {
-        console.log('WARN: wstream may not have finished writing!')
-        delay(5000)
-    }
     console.log('done scrolling, end writing')
-    wstream.end('\nDONE')
-
-    // Waiting for fifo writes to finish...
+    redisClient.quit()
 
     await browser.close();
 })();

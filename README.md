@@ -9,11 +9,12 @@ To start your Phoenix server:
 
 Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+Make sure Redis is installed and running on `localhost:6379`. Test connecting to the server with `$ redis-cli`
 
 ## Web Scraping
   * Run `mix insert_places` to initialize PostgreSQL database with Bandsintown place_ids
-  * Run `cd assets && npm install` then `node vendor/browse_bit.js` to open a Puppeteer session for a single place_id
+  * Run `mix bit_data_processing` to start scraping the website and populating the database tables.
+  <!-- * Run `cd assets && npm install` then `node vendor/scrape_bit.js` to open a Puppeteer session for a single place_id -->
 
 ## TODOs
   1. run lots of browse_bit functions concurrently, each with their own place_id
