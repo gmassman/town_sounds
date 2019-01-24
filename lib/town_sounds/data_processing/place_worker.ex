@@ -34,16 +34,16 @@ defmodule TownSounds.DataProcessing.PlaceWorker do
     Apex.ap(["started pubsub and fifo_writer", {pubsub, fifo_writer}])
 
     # run PlaceScraper to process data from channel
-    loop(pubsub, ref, fifo_channel)
+    loop(pubsub, ref, fifo_channel, place_id)
   end
 
-  defp loop(pubsub, ref, channel) do
+  defp loop(pubsub, ref, channel, place_id) do
     receive do
       {:redix_pubsub, ^pubsub, ^ref, :subscribed, %{channel: ^channel}} -> :ok
       {:redix_pubsub, ^pubsub, ^ref, :message, %{channel: ^channel, payload: payload}} ->
-        spawn(fn -> PlaceScraper.process(payload) end)
+        spawn(fn -> PlaceScraper.consume(payload, place_id) end)
     end
-    loop(pubsub, ref, channel)
+    loop(pubsub, ref, channel, place_id)
   end
 
   @impl true

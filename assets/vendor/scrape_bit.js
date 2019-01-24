@@ -57,7 +57,7 @@ process.on('unhandledRejection', error => {
         return html
     }
 
-    console.log('Scrolling down the page')
+    console.log('Scrolling down the page...')
     for (i = 0; i < SCROLL_DOWN_EVENTS; i++) {
         await page.keyboard.press('ArrowDown', { delay: 20 })
         const events = await page.$$eval('.' + eventNode, htmlFromMatchNodes)
@@ -72,7 +72,7 @@ process.on('unhandledRejection', error => {
         }
     }
 
-    console.log('done scrolling, end writing')
+    console.log('done scrolling, quit publishing')
     redisClient.quit()
 
     await browser.close();

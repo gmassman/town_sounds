@@ -8,9 +8,8 @@ defmodule TownSounds.DataProcessing.SystemSupervisor do
     For each place_id, spawn a worker to fetch bandsintown data
   """
   def start do
-    limit = 2
     children =
-      Repo.all(from AutocompletePlace, select: [:place_id], limit: ^limit)
+      Repo.all(from AutocompletePlace, select: [:place_id], limit: 4)
       |> Enum.map(fn p ->
         Supervisor.child_spec({PlaceWorker, p.place_id}, id: String.to_atom("place_worker_#{p.place_id}"))
       end)

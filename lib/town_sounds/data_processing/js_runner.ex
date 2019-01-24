@@ -1,5 +1,5 @@
 defmodule TownSounds.DataProcessing.JSRunner do
-  alias TownSounds.DataProcess.PlaceWorker
+  alias TownSounds.DataProcessing.PlaceWorker
 
   @doc """
     Run scrape_bit.js code with the proper environment.

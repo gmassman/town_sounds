@@ -48,7 +48,8 @@ defmodule TownSounds.MixProject do
       {:poison, "~> 3.1.0"},
       {:apex, "~> 1.2.1"},
       {:gproc, "~> 0.8.0"},
-      {:redix, "~> 0.9.1"}
+      {:redix, "~> 0.9.1"},
+      {:floki, "~> 0.20.4"}
     ]
   end
 
