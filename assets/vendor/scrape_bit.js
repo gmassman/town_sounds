@@ -1,6 +1,6 @@
 const _ = require('lodash')
 const puppeteer = require('puppeteer')
-const redis = require("redis")
+const redis = require('redis')
 
 process.on('unhandledRejection', error => {
     console.log('unhandledRejection', error.message)
@@ -40,7 +40,7 @@ async function publishEvents (channelId) {
         return
     }
 
-    console.log('got this much in batch:', this.batchOfJson.length, 'and seen:', this.seenJson.size)
+    console.log('got this much in batch:', this.batchOfJson.length, 'and seen:', this.seenJson.length)
     this.redisClient.publish(channelId, JSON.stringify(this.batchOfJson))
     this.batchOfJson = []
 }
@@ -59,8 +59,8 @@ async function publishEvents (channelId) {
     this.page = await this.browser.newPage();
 
     this.redisClient = redis.createClient(REDIS_URL);
-    this.redisClient.on("error", function (err) {
-        console.log("[Redis Error]", err);
+    this.redisClient.on('error', function (err) {
+        console.log('[Redis Error]', err);
     })
 
     console.log('visiting', baseUrl)
