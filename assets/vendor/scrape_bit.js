@@ -1,38 +1,13 @@
+const _ = require('lodash')
 const puppeteer = require('puppeteer')
 const redis = require("redis")
-
-
-const delay = ms => new Promise(res => setTimeout(res, ms));
 
 process.on('unhandledRejection', error => {
     console.log('unhandledRejection', error.message)
     console.log(error.stack)
 });
 
-(async () => {
-    const SCROLL_DOWN_EVENTS = process.env.SCROLL_DOWN_EVENTS || 1000
-    const PLACE_ID = process.env.PLACE_ID || 'ChIJOwg_06VPwokRYv534QaPC8g' // NYC
-    const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379'
-    const FIFO_CHANNEL = process.env.FIFO_CHANNEL || `BIT_CHANNEL:${PLACE_ID}`
-
-    // const config = { headless: false, devtools: true } // use for testing
-    const config = { headless: true }
-    const browser = await puppeteer.launch(config);
-    const page = await browser.newPage();
-    const baseUrl = `https://www.bandsintown.com/?place_id=${PLACE_ID}`
-
-    console.log('visiting', baseUrl)
-    await page.goto(baseUrl);
-
-    // load the topEvents page
-    const [_res1] = await Promise.all([
-        page.waitForNavigation(),
-        page.click('.topEvents-40dbb4d2')
-    ])
-
-    await delay(1500);
-
-    // get the lazy loaded elements
+async function clickViewAll (page) {
     const eventList = 'eventList-23e37430'
     const lastListElementClass = (eventList) => {
         var divs = document.querySelector('.' + eventList).children
@@ -40,40 +15,69 @@ process.on('unhandledRejection', error => {
     }
     const viewAll = await page.evaluate(lastListElementClass, eventList);
     await page.click(viewAll)
+}
 
-    const eventNode = 'event-0fe45b3b'
-    const allHtml = new Set()
-    const redisClient = redis.createClient(REDIS_URL);
+async function scrollDown (scrollInterval) {
+    await this.page.keyboard.press('ArrowDown', { delay: scrollInterval - 5 })
+}
 
-    redisClient.on("error", function (err) {
+async function batchUpcomingEvents (res) {
+    if (!/upcomingEvents/.test(res.url())) return
+    let body = await res.text()
+    body = JSON.parse(body)
+    _.forEach(body.events, event => {
+        if (!this.seenJson.has(event)) {
+            this.seenJson.add(event)
+            this.batchOfJson.push(event)
+        }
+    })
+}
+
+async function publishEvents (channelId) {
+    if (_.isEmpty(this.batchOfJson)) {
+        console.log('done scrolling, stopped publishing')
+        this.cleanup()
+        return
+    }
+
+    console.log('got this much in batch:', this.batchOfJson.length, 'and seen:', this.seenJson.size)
+    this.redisClient.publish(channelId, JSON.stringify(this.batchOfJson))
+    this.batchOfJson = []
+}
+
+(async () => {
+    const PLACE_ID = process.env.PLACE_ID || 'ChIJOwg_06VPwokRYv534QaPC8g' // NYC
+    const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379' // url for channel
+    const CHANNEL_ID = process.env.CHANNEL_ID || `BIT_CHANNEL:${PLACE_ID}` // write data to this channel
+    const SCROLL_INTERVAL = 10 // quicker scrolling blocks chromium's renderer from loading images, increasing JSON throughput
+    const EVENTS_INTERVAL = 5000 // every 5 seconds, write new events to redis channel
+    const NODE_CONFIG = /* { headless: false, devtools: true } || */ { headless: true }
+
+    const baseUrl = `https://www.bandsintown.com/?place_id=${PLACE_ID}`
+
+    this.browser = await puppeteer.launch(NODE_CONFIG);
+    this.page = await this.browser.newPage();
+
+    this.redisClient = redis.createClient(REDIS_URL);
+    this.redisClient.on("error", function (err) {
         console.log("[Redis Error]", err);
     })
 
-    const htmlFromMatchNodes = (nodes) => {
-        html = []
-        for (node of nodes) {
-            html.push(node.outerHTML)
-        }
-        return html
+    console.log('visiting', baseUrl)
+    await this.page.goto(baseUrl)
+    await clickViewAll(this.page)
+
+    this.seenJson = new Set()
+    this.batchOfJson = []
+
+    this.page.on('response', batchUpcomingEvents.bind(this))
+    this.scrollTimeout = setInterval(scrollDown.bind(this), SCROLL_INTERVAL, SCROLL_INTERVAL)
+    this.eventsTimeout = setInterval(publishEvents.bind(this), EVENTS_INTERVAL, CHANNEL_ID)
+
+    this.cleanup = function () {
+        clearInterval(this.scrollTimeout)
+        clearInterval(this.eventsTimeout)
+        this.redisClient.quit()
+        this.browser.close().then(() => process.exit())
     }
-
-    console.log('Scrolling down the page...')
-    for (i = 0; i < SCROLL_DOWN_EVENTS; i++) {
-        await page.keyboard.press('ArrowDown', { delay: 20 })
-        const events = await page.$$eval('.' + eventNode, htmlFromMatchNodes)
-
-        for (html of events) {
-            if (allHtml.has(html)) {
-                continue
-            }
-
-            allHtml.add(html)
-            redisClient.publish(FIFO_CHANNEL, html)
-        }
-    }
-
-    console.log('done scrolling, quit publishing')
-    redisClient.quit()
-
-    await browser.close();
 })();
