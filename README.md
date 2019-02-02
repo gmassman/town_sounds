@@ -1,5 +1,19 @@
 # TownSounds
 
+First, install these components. Most can be downloaded using a package manager, or from the distributors' website:
+
+  * [Elixir](https://elixir-lang.org/install.html)
+  * [Redis](https://redis.io/topics/quickstart)
+  * [PostgreSQL](https://www.postgresql.org/download/)
+  * [NodeJS](https://nodejs.org/en/download/)
+  * [Phoenix](https://hexdocs.pm/phoenix/installation.html)
+
+Update the default postgres password to `postgres` (so it matches what's in _config/dev.exs_):
+```
+$ sudo -u postgres psql
+postgres=# \password postgres
+```
+
 To start your Phoenix server:
 
   * Install dependencies with `mix deps.get`
